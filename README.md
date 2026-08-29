@@ -21,7 +21,7 @@ pacman -Qi xfce4-genmon-plugin &>/dev/null || sudo pacman -S xfce4-genmon-plugin
 
 ```bash
 # 1. clone
-git clone https://github.com/wellintonvieira/arch-run-cat.git ~/.local/share/arch-run-cat
+git clone https://github.com/nellowint/arch-run-cat.git ~/.local/share/arch-run-cat
 cd ~/.local/share/arch-run-cat
 
 # 2. make executable
