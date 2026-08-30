@@ -56,7 +56,7 @@ RUN_CAT_THEME=dark /home/YOU/.local/share/arch-run-cat/run-cat.sh
 RUN_CAT_THEME=light /home/YOU/.local/share/arch-run-cat/run-cat.sh
 ```
 
-Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped). Animated GIFs `resources/cat/{dark,light}_cat_{0.07,0.08,0.10,0.15,0.20,0.30,0.50}.gif` are generated via `magick -delay` and used by default — GTK animates internally, 5s Genmon avoids reset for fluid 5-14 FPS.
+Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped). Animated GIFs `resources/cat/{dark,light}_cat_{0.07,0.08,0.10,0.15,0.20}.gif` are generated via `magick -delay` and used by default — GTK animates internally, 5s Genmon avoids reset for fluid 5-14 FPS.
 
 ## How it works
 
