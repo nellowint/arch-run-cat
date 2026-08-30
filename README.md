@@ -56,14 +56,14 @@ RUN_CAT_THEME=dark /home/YOU/.local/share/arch-run-cat/run-cat.sh
 RUN_CAT_THEME=light /home/YOU/.local/share/arch-run-cat/run-cat.sh
 ```
 
-Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped).
+Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped). Animated GIFs `resources/cat/{dark,light}_cat_{0.07,0.10,0.20,0.30,0.50}.gif` are generated via `magick -delay` and used by default — GTK animates internally, bypassing Genmon's `0.25s` limit for fluid 2-14 FPS.
 
 ## How it works
 
 - **Genmon contract** (`run-cat.sh:86-88`): stdout must be exactly `<img>PATH</img>`, `<txt> XX%</txt>`, `<tool>Uso de CPU: XX%</tool>` — no extra output.
 - **CPU**: `LC_ALL=C top -bn1 | grep -i "Cpu(s)"` → `100 - idle`, clamped 0–100 (`LC_ALL=C` + `grep -i` required for locale/case variants).
-- **State**: `${XDG_RUNTIME_DIR:-/tmp}/runcat/frame.state` with atomic write (`> file.$$ && mv`). Legacy `/tmp/runcat_frame.state` is migrated once. Corrupted values reset to `0`.
-- **Speed**: Genmon period `0.25s` (minimum). Fixed `0.25s/frame` (4 FPS / 1.25s cycle). The cat always runs.
+- **State**: GIF primary needs no state (GTK animates); PNG fallback uses `${XDG_RUNTIME_DIR:-/tmp}/runcat/frame.state` with atomic write (`> file.$$ && mv`).
+- **Speed**: CPU-proportional via GIF delays; Genmon `0.25s` only switches GIF path. `CPU<10→0.50s` (2 FPS), `10-20→0.30s`, `20-40→0.20s`, `40-60→0.10s`, `>=60→0.07s` (14 FPS). GTK animates internally.
 
 ## Troubleshooting
 
