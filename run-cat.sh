@@ -67,4 +67,4 @@ fi
 # Saída formatada para o Genmon do XFCE
 echo "<img>${IMAGE_PATH}</img>"
 echo "<txt> ${CPU_INT}%</txt>"
-echo "<tool>Uso de CPU: ${CPU_INT}%</tool>"
+echo "<tool>CPU Usage: ${CPU_INT}%</tool>"

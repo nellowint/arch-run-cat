@@ -4,7 +4,7 @@ A cute animated cat running on your Arch Linux XFCE taskbar via Genmon! 🐾
 
 ![demo](resources/demo.gif)
 
-`run-cat.sh` displays an animated cat (5 frames × 2 themes) in the XFCE panel. Animation speed follows CPU usage and the cat tooltip shows `Uso de CPU: XX%`.
+`run-cat.sh` displays an animated cat (5 frames × 2 themes) in the XFCE panel. Animation speed follows CPU usage and the cat tooltip shows `CPU Usage: XX%`.
 
 ## Requirements
 
@@ -60,7 +60,7 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PN
 
 ## How it works
 
-- **Genmon contract** (`run-cat.sh:86-88`): stdout must be exactly `<img>PATH</img>`, `<txt> XX%</txt>`, `<tool>Uso de CPU: XX%</tool>` — no extra output.
+- **Genmon contract** (`run-cat.sh:86-88`): stdout must be exactly `<img>PATH</img>`, `<txt> XX%</txt>`, `<tool>CPU Usage: XX%</tool>` — no extra output.
 - **CPU**: `LC_ALL=C top -bn1 | grep -i "Cpu(s)"` → `100 - idle`, clamped 0–100 (`LC_ALL=C` + `grep -i` required for locale/case variants).
 - **State**: GIF primary needs no state (GTK animates); PNG fallback uses `${XDG_RUNTIME_DIR:-/tmp}/runcat/frame.state` with atomic write (`> file.$$ && mv`).
 - **Speed**: CPU-proportional via GIF delays; Genmon `5s` (recommended) only switches GIF path. `CPU<10→0.10s` (10 FPS), `10-20→0.09s`, `20-40→0.08s`, `40-50→0.07s`, `50-70→0.06s`, `>=70→0.05s` (20 FPS). GTK animates internally, avoids 0.25s reset.
