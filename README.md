@@ -41,7 +41,7 @@ RUN_CAT_THEME=light ./run-cat.sh
 2. Search **Generic Monitor** (`xfce4-genmon-plugin`) → **Add**.
 3. Right-click the new Genmon item → **Properties**:
    - **Command**: absolute path to the script, e.g. `/home/YOU/.local/share/arch-run-cat/run-cat.sh`
-   - **Period (s)**: `0.10`
+   - **Period (s)**: `0.25` (Genmon minimum)
    - **Label**: off (script already outputs `<txt> XX%</txt>`)
 4. Save. The cat should appear immediately and animate.
 
@@ -62,14 +62,14 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PN
 
 - **Genmon contract** (`run-cat.sh:86-88`): stdout must be exactly `<img>PATH</img>`, `<txt> XX%</txt>`, `<tool>Uso de CPU: XX%</tool>` — no extra output.
 - **CPU**: `LC_ALL=C top -bn1 | grep -i "Cpu(s)"` → `100 - idle`, clamped 0–100 (`LC_ALL=C` + `grep -i` required for locale/case variants).
-- **State**: `${XDG_RUNTIME_DIR:-/tmp}/runcat/{frame,count}.state` with atomic write (`> file.$$ && mv`). Legacy `/tmp/runcat_*.state` is migrated once. Corrupted values reset to `0`.
-- **Speed**: Genmon period is assumed `0.10s`. `CPU > 60 → LIMIT=0` (10 FPS / 0.5s cycle), else `LIMIT=1` (5 FPS / 1.0s cycle). The cat always runs — no idle pause.
+- **State**: `${XDG_RUNTIME_DIR:-/tmp}/runcat/frame.state` with atomic write (`> file.$$ && mv`). Legacy `/tmp/runcat_frame.state` is migrated once. Corrupted values reset to `0`.
+- **Speed**: Genmon period `0.25s` (minimum). Fixed `0.25s/frame` (4 FPS / 1.25s cycle). The cat always runs.
 
 ## Troubleshooting
 
 - **No image / broken icon**: check that `Command` is an absolute path and `resources/cat/` exists next to it. Test manually in a terminal.
 - **Wrong theme**: run `xfconf-query -c xsettings -p /Net/ThemeName` and verify. Use `RUN_CAT_THEME` override if needed.
-- **Genmon shows command output as text**: ensure Genmon period is `0.10` and the script is executable. Run `bash -n run-cat.sh` for syntax check.
+- **Genmon shows command output as text**: ensure Genmon period is `0.25` and the script is executable. Run `bash -n run-cat.sh` for syntax check.
 
 ## Uninstall
 

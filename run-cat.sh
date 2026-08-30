@@ -18,32 +18,25 @@ else
     PREFIX="light_cat"
 fi
 
-# Arquivos de estado - FASE2: XDG_RUNTIME_DIR com fallback /tmp + escrita atômica
+# Arquivos de estado - XDG_RUNTIME_DIR com fallback /tmp + escrita atômica
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/runcat"
 mkdir -p "$STATE_DIR"
 STATE_FILE="${STATE_DIR}/frame.state"
-COUNT_FILE="${STATE_DIR}/count.state"
 
-# Migração: se arquivos legados existem em /tmp e novos não existem, migra
+# Migração: se arquivo legado existe em /tmp e novo não existe, migra
 if [ ! -f "$STATE_FILE" ] && [ -f "/tmp/runcat_frame.state" ]; then
     cp "/tmp/runcat_frame.state" "$STATE_FILE" 2>/dev/null || echo "0" > "$STATE_FILE"
 fi
-if [ ! -f "$COUNT_FILE" ] && [ -f "/tmp/runcat_count.state" ]; then
-    cp "/tmp/runcat_count.state" "$COUNT_FILE" 2>/dev/null || echo "0" > "$COUNT_FILE"
-fi
 [ ! -f "$STATE_FILE" ] && echo "0" > "$STATE_FILE"
-[ ! -f "$COUNT_FILE" ] && echo "0" > "$COUNT_FILE"
 
 CURRENT_FRAME=$(cat "$STATE_FILE" 2>/dev/null || echo "0")
-COUNT=$(cat "$COUNT_FILE" 2>/dev/null || echo "0")
 
 # Validação de numéricos (evita erro com arquivo corrompido)
 [[ "$CURRENT_FRAME" =~ ^[0-9]+$ ]] || CURRENT_FRAME=0
-[[ "$COUNT" =~ ^[0-9]+$ ]] || COUNT=0
 # Garante frame dentro do range (corrige migração legada com valor 99)
 CURRENT_FRAME=$(( CURRENT_FRAME % TOTAL_FRAMES ))
 
-# Calcula o uso da CPU - FASE1 B1/B2/B4: LC_ALL=C + grep -i + fallback
+# Calcula o uso da CPU - LC_ALL=C + grep -i + fallback
 CPU_USAGE=$(LC_ALL=C top -bn1 2>/dev/null | grep -i "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' 2>/dev/null || echo "0")
 CPU_USAGE=${CPU_USAGE:-0}
 # Converte para inteiro com arredondamento (printf) e valida - LC_ALL=C para ponto decimal
@@ -55,18 +48,9 @@ fi
 [ "$CPU_INT" -gt 100 ] && CPU_INT=100
 [ "$CPU_INT" -lt 0 ] && CPU_INT=0
 
-# Define a velocidade de troca de frames - Opção D: sempre correndo
-# Period Genmon 0.10s: LIMIT 0 = 0.10s/frame (0.5s/ciclo 10 FPS), LIMIT 1 = 0.20s/frame (1.0s/ciclo 5 FPS)
-if [ "$CPU_INT" -gt 60 ]; then LIMIT=0;    # Super rápido (>60% CPU)
-else LIMIT=1;                            # Correndo (sempre animando, idle = 5 FPS)
-fi
-
-if [ "$COUNT" -ge "$LIMIT" ]; then
-    CURRENT_FRAME=$(( (CURRENT_FRAME + 1) % TOTAL_FRAMES ))
-    echo "0" > "${COUNT_FILE}.$$" && mv "${COUNT_FILE}.$$" "$COUNT_FILE"
-else
-    echo $((COUNT + 1)) > "${COUNT_FILE}.$$" && mv "${COUNT_FILE}.$$" "$COUNT_FILE"
-fi
+# Velocidade fixa — Genmon mínimo 0.25s: 0.25s/frame (4 FPS / 1.25s por ciclo de 5 frames)
+# Sempre avança 1 frame por tick (sem LIMIT/COUNT)
+CURRENT_FRAME=$(( (CURRENT_FRAME + 1) % TOTAL_FRAMES ))
 
 echo "$CURRENT_FRAME" > "${STATE_FILE}.$$" && mv "${STATE_FILE}.$$" "$STATE_FILE"
 
