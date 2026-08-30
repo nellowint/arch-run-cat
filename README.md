@@ -41,7 +41,7 @@ RUN_CAT_THEME=light ./run-cat.sh
 2. Search **Generic Monitor** (`xfce4-genmon-plugin`) → **Add**.
 3. Right-click the new Genmon item → **Properties**:
    - **Command**: absolute path to the script, e.g. `/home/YOU/.local/share/arch-run-cat/run-cat.sh`
-   - **Period (s)**: `0.25` (Genmon minimum)
+   - **Period (s)**: `5` (recommended for GIF animation; 0.25s resets GIF via GtkImage recreation)
    - **Label**: off (script already outputs `<txt> XX%</txt>`)
 4. Save. The cat should appear immediately and animate.
 
@@ -56,20 +56,20 @@ RUN_CAT_THEME=dark /home/YOU/.local/share/arch-run-cat/run-cat.sh
 RUN_CAT_THEME=light /home/YOU/.local/share/arch-run-cat/run-cat.sh
 ```
 
-Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped). Animated GIFs `resources/cat/{dark,light}_cat_{0.07,0.10,0.20,0.30,0.50}.gif` are generated via `magick -delay` and used by default — GTK animates internally, bypassing Genmon's `0.25s` limit for fluid 2-14 FPS.
+Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG; `.ico` fallback is checked but not shipped). Animated GIFs `resources/cat/{dark,light}_cat_{0.07,0.08,0.10,0.15,0.20,0.30,0.50}.gif` are generated via `magick -delay` and used by default — GTK animates internally, 5s Genmon avoids reset for fluid 5-14 FPS.
 
 ## How it works
 
 - **Genmon contract** (`run-cat.sh:86-88`): stdout must be exactly `<img>PATH</img>`, `<txt> XX%</txt>`, `<tool>Uso de CPU: XX%</tool>` — no extra output.
 - **CPU**: `LC_ALL=C top -bn1 | grep -i "Cpu(s)"` → `100 - idle`, clamped 0–100 (`LC_ALL=C` + `grep -i` required for locale/case variants).
 - **State**: GIF primary needs no state (GTK animates); PNG fallback uses `${XDG_RUNTIME_DIR:-/tmp}/runcat/frame.state` with atomic write (`> file.$$ && mv`).
-- **Speed**: CPU-proportional via GIF delays; Genmon `0.25s` only switches GIF path. `CPU<10→0.50s` (2 FPS), `10-20→0.30s`, `20-40→0.20s`, `40-60→0.10s`, `>=60→0.07s` (14 FPS). GTK animates internally.
+- **Speed**: CPU-proportional via GIF delays; Genmon `5s` (recommended) only switches GIF path. `CPU<10→0.20s` (5 FPS), `10-20→0.15s` (6.6 FPS), `20-40→0.10s` (10 FPS), `40-50→0.08s` (12.5 FPS), `>=50→0.07s` (14 FPS). GTK animates internally, avoids 0.25s reset.
 
 ## Troubleshooting
 
 - **No image / broken icon**: check that `Command` is an absolute path and `resources/cat/` exists next to it. Test manually in a terminal.
 - **Wrong theme**: run `xfconf-query -c xsettings -p /Net/ThemeName` and verify. Use `RUN_CAT_THEME` override if needed.
-- **Genmon shows command output as text**: ensure Genmon period is `0.25` and the script is executable. Run `bash -n run-cat.sh` for syntax check.
+- **Genmon shows command output as text**: ensure Genmon period is `5` (recommended) and the script is executable. Run `bash -n run-cat.sh` for syntax check.
 
 ## Uninstall
 

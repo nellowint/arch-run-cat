@@ -30,13 +30,13 @@ fi
 [ "$CPU_INT" -gt 100 ] && CPU_INT=100
 [ "$CPU_INT" -lt 0 ] && CPU_INT=0
 
-# Velocidade proporcional à CPU — Genmon mínimo 0.25s, mas GIF anima internamente
-# Buckets: <10 → 0.50s (2 FPS), 10-20 → 0.30s (3.3 FPS), 20-40 → 0.20s (5 FPS), 40-60 → 0.10s (10 FPS), >=60 → 0.07s (14 FPS)
-# positive_correlation=true: maior CPU = mais rápido (inverso de config.json original)
-if [ "$CPU_INT" -lt 10 ]; then DELAY="0.50"
-elif [ "$CPU_INT" -lt 20 ]; then DELAY="0.30"
-elif [ "$CPU_INT" -lt 40 ]; then DELAY="0.20"
-elif [ "$CPU_INT" -lt 60 ]; then DELAY="0.10"
+# Velocidade proporcional à CPU — Genmon recomendado 5s para GIF animar livre (0.25s reseta animação)
+# Buckets C: <10 → 0.20s (5 FPS), 10-20 → 0.15s (6.6 FPS), 20-40 → 0.10s (10 FPS), 40-50 → 0.08s (12.5 FPS), >=50 → 0.07s (14 FPS)
+# Period 5s evita reset de GtkImage a cada tick; alta CPU = mais rápido
+if [ "$CPU_INT" -lt 10 ]; then DELAY="0.20"
+elif [ "$CPU_INT" -lt 20 ]; then DELAY="0.15"
+elif [ "$CPU_INT" -lt 40 ]; then DELAY="0.10"
+elif [ "$CPU_INT" -lt 50 ]; then DELAY="0.08"
 else DELAY="0.07"
 fi
 
