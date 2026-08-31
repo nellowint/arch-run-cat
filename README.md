@@ -53,7 +53,7 @@ RUN_CAT_THEME=dark xfce4-panel -r
 RUN_CAT_THEME=light xfce4-panel -r
 ```
 
-Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PNG) installed to `/usr/share/arch-run-cat/cat/`.
+Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (32×32 PNG) installed to `/usr/share/arch-run-cat/cat/`.
 
 ## How it works
 
