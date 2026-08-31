@@ -1,0 +1,9 @@
+[Xfce Panel]
+Type=X-XFCE-PanelPlugin
+Encoding=UTF-8
+Name=Run Cat
+Comment=Animated cat following CPU usage
+Icon=arch-run-cat
+X-XFCE-Module=runcat
+X-XFCE-API=2.0
+X-XFCE-Internal=false

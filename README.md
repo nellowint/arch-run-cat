@@ -1,10 +1,10 @@
 # arch-run-cat
 
-A cute animated cat running on your Arch Linux XFCE taskbar via Genmon! 🐾
+A cute animated cat running on your Arch Linux XFCE taskbar via Genmon or native panel plugin! 🐾
 
 ![demo](resources/demo.gif)
 
-`run-cat.sh` displays an animated cat (5 frames × 2 themes) in the XFCE panel. Animation speed follows CPU usage and the cat tooltip shows `CPU Usage: XX%`.
+`run-cat.sh` displays an animated cat (5 frames × 2 themes) in the XFCE panel via Genmon. Animation speed follows CPU usage and the cat tooltip shows `CPU Usage: XX%`. A native XFCE panel plugin (`panel-plugin/runcat.c`) is also available for fluid animation without Genmon reset (see Native Plugin below).
 
 ## Requirements
 
@@ -71,13 +71,31 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PN
 - **Wrong theme**: run `xfconf-query -c xsettings -p /Net/ThemeName` and verify. Use `RUN_CAT_THEME` override if needed.
 - **Genmon shows command output as text**: ensure Genmon period is `5` (recommended) and the script is executable. Run `bash -n run-cat.sh` for syntax check.
 
+## Native Plugin (experimental, no Genmon reset)
+
+Fluid animation without Genmon's 5s GIF reset. The plugin drives its own `g_timeout_add(50ms)` and reads `/proc/stat` directly.
+
+```bash
+# build (requires base-devel, xfce4-panel dev files)
+# Arch: sudo pacman -S base-devel meson pkgconf
+meson setup build --prefix=/usr
+meson compile -C build
+sudo meson install -C build  # installs libruncat.so to /usr/lib/xfce4/panel/plugins + runcat.desktop
+xfce4-panel -r  # restart panel
+# Then: Panel → Add New Items → Run Cat
+```
+
+Fallback Genmon (`run-cat.sh`) remains for systems without the plugin.
+
 ## Uninstall
 
-Remove the Genmon item from the panel, then delete the folder:
+Remove the Genmon item or Run Cat plugin from the panel, then delete the folder:
 
 ```bash
 rm -rf ~/.local/share/arch-run-cat
 rm -rf "${XDG_RUNTIME_DIR:-/tmp}/runcat"
+# if installed native plugin:
+sudo rm /usr/lib/xfce4/panel/plugins/libruncat.so /usr/share/xfce4/panel/plugins/runcat.desktop
 ```
 
 ## License
