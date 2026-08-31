@@ -1,5 +1,9 @@
 # arch-run-cat
 
+[![AUR](https://img.shields.io/aur/version/arch-run-cat)](https://aur.archlinux.org/packages/arch-run-cat)
+[![AUR votes](https://img.shields.io/aur/votes/arch-run-cat)](https://aur.archlinux.org/packages/arch-run-cat)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
 A cute animated cat running on your Arch Linux XFCE taskbar via native panel plugin! 🐾
 
 ![demo](resources/demo.gif)
