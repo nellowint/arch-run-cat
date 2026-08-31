@@ -58,7 +58,7 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PN
 ## How it works
 
 - **CPU**: reads `/proc/stat` delta (`Idle = idle+iowait`, `NonIdle = user+nice+system+irq+softirq+steal`) every 1s, `CPU% = (totald-idled)*100/totald` clamped 0–100.
-- **Animation**: `g_timeout_add(50-100ms)` drives `GtkImage` with scaled `GdkPixbuf` (16-48px bilinear). Delay is CPU-proportional: `CPU<10→100ms` (10 FPS), `10-20→90ms`, `20-40→80ms`, `40-50→70ms`, `50-70→60ms`, `>=70→50ms` (20 FPS). No Genmon, no reset.
+- **Animation**: `g_timeout_add(50-100ms)` drives `GtkImage` with scaled `GdkPixbuf` (16-48px bilinear). Delay is CPU-proportional: `CPU<10→100ms` (10 FPS), `10-20→90ms`, `20-40→80ms`, `40-50→70ms`, `50-70→60ms`, `>=70→50ms` (20 FPS).
 - **Resources**: `DATADIR=/usr/share/arch-run-cat/cat` (meson `prefix/datadir`), fallback `XDG_DATA_HOME` and `GtkSettings` for theme. No `frame.state` needed.
 - **Tooltip**: `CPU Usage: XX%` on hover, label ` XX%` beside the cat.
 
@@ -67,18 +67,6 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (24×24 PN
 - **Plugin not in list**: check `ls /usr/lib/xfce4/panel/plugins/libruncat.so && ls /usr/share/xfce4/panel/plugins/runcat.desktop` and rebuild with `meson compile -C build && sudo meson install -C build && xfce4-panel -r`.
 - **No image / wrong theme**: check `xfconf-query -c xsettings -p /Net/ThemeName` and `RUN_CAT_THEME` env, verify `ls /usr/share/arch-run-cat/cat/`.
 - **Build fails**: ensure `base-devel`, `meson`, `pkgconf`, `xfce4-panel` dev headers are installed.
-
-## Migrating from Genmon (run-cat.sh)
-
-Old versions used Genmon with `run-cat.sh` and GIFs:
-
-```bash
-# 1. Remove Genmon item from panel (right-click → Remove)
-# 2. Clean legacy files (if you cloned before)
-rm -rf ~/.local/share/arch-run-cat
-rm -rf "${XDG_RUNTIME_DIR:-/tmp}/runcat" /tmp/runcat_frame.state
-# 3. Install native plugin (see above)
-```
 
 ## Uninstall
 
