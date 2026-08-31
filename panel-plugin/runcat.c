@@ -42,7 +42,7 @@ static gint runcat_get_cpu_delay(RunCatPlugin *rc) {
 }
 
 static void runcat_load_frames(RunCatPlugin *rc) {
-    const gchar *prefix = rc->is_dark ? "dark_cat" : "light_cat";
+    (void)rc->is_dark; // suppress unused warning, prefix used via frames arrays
     gchar *datadirs[] = {
         g_build_filename(g_get_user_data_dir(), "arch-run-cat", "cat", NULL),
         g_build_filename(DATADIR, "arch-run-cat", "cat", NULL),
@@ -146,7 +146,8 @@ static gboolean runcat_update_cpu(gpointer data) {
         unsigned long long idled = Idle - rc->prev_idle;
         if (totald > 0) {
             gint cpu = (gint)((totald - idled) * 100 / totald);
-            if (cpu < 0) cpu = 0; if (cpu > 100) cpu = 100;
+            if (cpu < 0) cpu = 0;
+            if (cpu > 100) cpu = 100;
             rc->cpu_usage = cpu;
             gchar *tip = g_strdup_printf("CPU Usage: %d%%", cpu);
             gtk_widget_set_tooltip_text(rc->ebox, tip);

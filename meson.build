@@ -11,4 +11,6 @@ libxfce4util = dependency('libxfce4util-1.0')
 libxfconf = dependency('libxfconf-0')
 gdk_pixbuf = dependency('gdk-pixbuf-2.0')
 
+add_project_arguments('-DDATADIR="@0@"'.format(get_option('prefix') / get_option('datadir')), language: 'c')
+
 subdir('panel-plugin')
