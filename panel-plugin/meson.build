@@ -25,17 +25,3 @@ install_data('../resources/cat/dark_cat_0.png',
              '../resources/cat/light_cat_4.png',
              install_dir: get_option('datadir') / 'arch-run-cat' / 'cat'
 )
-install_data('../resources/cat/dark_cat_0.05.gif',
-             '../resources/cat/dark_cat_0.06.gif',
-             '../resources/cat/dark_cat_0.07.gif',
-             '../resources/cat/dark_cat_0.08.gif',
-             '../resources/cat/dark_cat_0.09.gif',
-             '../resources/cat/dark_cat_0.10.gif',
-             '../resources/cat/light_cat_0.05.gif',
-             '../resources/cat/light_cat_0.06.gif',
-             '../resources/cat/light_cat_0.07.gif',
-             '../resources/cat/light_cat_0.08.gif',
-             '../resources/cat/light_cat_0.09.gif',
-             '../resources/cat/light_cat_0.10.gif',
-             install_dir: get_option('datadir') / 'arch-run-cat' / 'cat'
-)
