@@ -14,7 +14,10 @@ typedef struct {
     GtkWidget *label;
     GdkPixbuf *frames_dark[TOTAL_FRAMES];
     GdkPixbuf *frames_light[TOTAL_FRAMES];
-    GdkPixbuf *frames_scaled[TOTAL_FRAMES];
+    GdkPixbuf *cache_dark[TOTAL_FRAMES];
+    GdkPixbuf *cache_light[TOTAL_FRAMES];
+    gint cached_size;
+    gint last_delay;
     gboolean is_dark;
     gint current_frame;
     gint cpu_usage;
@@ -39,6 +42,19 @@ static gint runcat_get_cpu_delay(RunCatPlugin *rc) {
     if (rc->cpu_usage < 50) return 70;
     if (rc->cpu_usage < 70) return 60;
     return 50; // 20 FPS
+}
+
+static void runcat_ensure_cache(RunCatPlugin *rc, gint target) {
+    if (rc->cached_size == target) return;
+    for (int i = 0; i < TOTAL_FRAMES; i++) {
+        if (rc->cache_dark[i]) { g_object_unref(rc->cache_dark[i]); rc->cache_dark[i] = NULL; }
+        if (rc->cache_light[i]) { g_object_unref(rc->cache_light[i]); rc->cache_light[i] = NULL; }
+        if (rc->frames_dark[i])
+            rc->cache_dark[i] = gdk_pixbuf_scale_simple(rc->frames_dark[i], target, target, GDK_INTERP_BILINEAR);
+        if (rc->frames_light[i])
+            rc->cache_light[i] = gdk_pixbuf_scale_simple(rc->frames_light[i], target, target, GDK_INTERP_BILINEAR);
+    }
+    rc->cached_size = target;
 }
 
 static void runcat_load_frames(RunCatPlugin *rc) {
@@ -157,10 +173,13 @@ static gboolean runcat_update_cpu(gpointer data) {
                 gtk_label_set_text(GTK_LABEL(rc->label), txt);
                 g_free(txt);
             }
-            // reschedule animation with new delay
-            if (rc->anim_timeout_id) g_source_remove(rc->anim_timeout_id);
+            // reschedule only if delay changed to avoid jitter
             gint delay = runcat_get_cpu_delay(rc);
-            rc->anim_timeout_id = g_timeout_add(delay, runcat_update_animation, rc);
+            if (delay != rc->last_delay) {
+                if (rc->anim_timeout_id) g_source_remove(rc->anim_timeout_id);
+                rc->anim_timeout_id = g_timeout_add(delay, runcat_update_animation, rc);
+                rc->last_delay = delay;
+            }
         }
     }
     rc->prev_idle = Idle;
@@ -171,26 +190,30 @@ static gboolean runcat_update_cpu(gpointer data) {
 static gboolean runcat_update_animation(gpointer data) {
     RunCatPlugin *rc = data;
     rc->current_frame = (rc->current_frame + 1) % TOTAL_FRAMES;
-    GdkPixbuf *pix = rc->is_dark ? rc->frames_dark[rc->current_frame] : rc->frames_light[rc->current_frame];
-    if (!pix) pix = rc->frames_dark[0] ? rc->frames_dark[0] : rc->frames_light[0];
+    gint size = xfce_panel_plugin_get_size(rc->plugin);
+    gint icon_size = xfce_panel_plugin_get_icon_size(rc->plugin);
+    gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
+    if (target < 16) target = 16;
+    if (target > 48) target = 48;
+    runcat_ensure_cache(rc, target);
+    GdkPixbuf *pix = rc->is_dark ? rc->cache_dark[rc->current_frame] : rc->cache_light[rc->current_frame];
+    if (!pix) pix = rc->cache_dark[0] ? rc->cache_dark[0] : rc->cache_light[0];
     if (pix) {
-        // scale to panel icon size
-        gint size = xfce_panel_plugin_get_size(rc->plugin);
-        gint icon_size = xfce_panel_plugin_get_icon_size(rc->plugin);
-        gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
-        if (target < 16) target = 16;
-        if (target > 48) target = 48;
-        GdkPixbuf *scaled = gdk_pixbuf_scale_simple(pix, target, target, GDK_INTERP_BILINEAR);
-        gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), scaled);
-        g_object_unref(scaled);
+        gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), pix);
     }
     return G_SOURCE_CONTINUE;
 }
 
 static gboolean runcat_size_changed(XfcePanelPlugin *plugin, gint size, gpointer data) {
     RunCatPlugin *rc = data;
-    // force immediate frame update with new size
-    runcat_update_animation(rc);
+    gint icon_size = xfce_panel_plugin_get_icon_size(plugin);
+    gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
+    if (target < 16) target = 16;
+    if (target > 48) target = 48;
+    runcat_ensure_cache(rc, target);
+    GdkPixbuf *pix = rc->is_dark ? rc->cache_dark[rc->current_frame] : rc->cache_light[rc->current_frame];
+    if (!pix) pix = rc->cache_dark[0] ? rc->cache_dark[0] : rc->cache_light[0];
+    if (pix) gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), pix);
     return TRUE;
 }
 
@@ -206,6 +229,8 @@ static void runcat_free(XfcePanelPlugin *plugin, gpointer data) {
     for (int i = 0; i < TOTAL_FRAMES; i++) {
         if (rc->frames_dark[i]) g_object_unref(rc->frames_dark[i]);
         if (rc->frames_light[i]) g_object_unref(rc->frames_light[i]);
+        if (rc->cache_dark[i]) g_object_unref(rc->cache_dark[i]);
+        if (rc->cache_light[i]) g_object_unref(rc->cache_light[i]);
     }
     g_free(rc->resource_path);
     g_free(rc);
@@ -214,9 +239,11 @@ static void runcat_free(XfcePanelPlugin *plugin, gpointer data) {
 static void runcat_construct(XfcePanelPlugin *plugin) {
     RunCatPlugin *rc = g_new0(RunCatPlugin, 1);
     rc->plugin = plugin;
-    rc->current_frame = 0;
+    rc->current_frame = TOTAL_FRAMES - 1;
     rc->cpu_usage = 0;
     rc->is_dark = FALSE;
+    rc->cached_size = -1;
+    rc->last_delay = -1;
 
     runcat_update_theme(rc);
     runcat_load_frames(rc);
@@ -240,11 +267,22 @@ static void runcat_construct(XfcePanelPlugin *plugin) {
 
     gtk_widget_set_tooltip_text(rc->ebox, "CPU Usage: 0%");
 
-    // initial frame
-    runcat_update_animation(rc);
+    // initial frame: show 0 without extra increment
+    rc->current_frame = 0;
+    {
+        gint size = xfce_panel_plugin_get_size(plugin);
+        gint icon_size = xfce_panel_plugin_get_icon_size(plugin);
+        gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
+        if (target < 16) target = 16;
+        if (target > 48) target = 48;
+        runcat_ensure_cache(rc, target);
+        GdkPixbuf *pix = rc->is_dark ? rc->cache_dark[0] : rc->cache_light[0];
+        if (pix) gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), pix);
+    }
 
     // timers: animation 50-100ms, cpu poll 1s
     gint delay = runcat_get_cpu_delay(rc);
+    rc->last_delay = delay;
     rc->anim_timeout_id = g_timeout_add(delay, runcat_update_animation, rc);
     rc->cpu_timeout_id = g_timeout_add(1000, runcat_update_cpu, rc);
     // poll immediately for initial cpu
