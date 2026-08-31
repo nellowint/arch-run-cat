@@ -192,7 +192,7 @@ static gboolean runcat_update_animation(gpointer data) {
     rc->current_frame = (rc->current_frame + 1) % TOTAL_FRAMES;
     gint size = xfce_panel_plugin_get_size(rc->plugin);
     gint icon_size = xfce_panel_plugin_get_icon_size(rc->plugin);
-    gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
+    gint target = size > icon_size ? size : icon_size;
     if (target < 16) target = 16;
     if (target > 48) target = 48;
     runcat_ensure_cache(rc, target);
@@ -207,7 +207,7 @@ static gboolean runcat_update_animation(gpointer data) {
 static gboolean runcat_size_changed(XfcePanelPlugin *plugin, gint size, gpointer data) {
     RunCatPlugin *rc = data;
     gint icon_size = xfce_panel_plugin_get_icon_size(plugin);
-    gint target = icon_size > 0 ? icon_size : (size > 0 ? size : 24);
+    gint target = size > icon_size ? size : icon_size;
     if (target < 16) target = 16;
     if (target > 48) target = 48;
     runcat_ensure_cache(rc, target);
