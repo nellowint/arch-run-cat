@@ -201,31 +201,65 @@ static void runcat_update_gpu(RunCatPlugin *rc) {
     gchar *err = NULL;
     gint status = 0;
     GError *gerr = NULL;
-    if (!g_spawn_command_line_sync("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+    if (g_spawn_command_line_sync("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
                                    &out, &err, &status, &gerr)) {
-        g_clear_error(&gerr);
         g_free(err);
+        if (status == 0 && out && *out) {
+            int usage = 0;
+            guint64 used = 0;
+            guint64 total = 0;
+            if (sscanf(out, "%d, %lu, %lu", &usage, &used, &total) == 3) {
+                rc->gpu_usage = usage;
+                rc->gpu_mem_used = used;
+                rc->gpu_mem_total = total;
+                g_free(out);
+                return;
+            }
+        }
         g_free(out);
         rc->gpu_usage = -1;
+        rc->gpu_mem_used = 0;
+        rc->gpu_mem_total = 0;
         return;
     }
+    g_clear_error(&gerr);
     g_free(err);
-    if (status != 0 || !out || !*out) {
-        g_free(out);
-        rc->gpu_usage = -1;
-        return;
-    }
-    int usage = 0;
-    guint64 used = 0;
-    guint64 total = 0;
-    if (sscanf(out, "%d, %lu, %lu", &usage, &used, &total) == 3) {
-        rc->gpu_usage = usage;
-        rc->gpu_mem_used = used;
-        rc->gpu_mem_total = total;
-    } else {
-        rc->gpu_usage = -1;
-    }
     g_free(out);
+
+    // AMD fallback: /sys/class/drm/card*/device/gpu_busy_percent (0-100)
+    const gchar *base = "/sys/class/drm";
+    GDir *dir = g_dir_open(base, 0, NULL);
+    if (dir) {
+        const gchar *entry;
+        while ((entry = g_dir_read_name(dir)) != NULL) {
+            if (!g_str_has_prefix(entry, "card") || strchr(entry, '-') != NULL)
+                continue;
+            gchar *path = g_build_filename(base, entry, "device", "gpu_busy_percent", NULL);
+            FILE *f = fopen(path, "r");
+            g_free(path);
+            if (!f)
+                continue;
+            int pct = -1;
+            if (fscanf(f, "%d", &pct) == 1) {
+                fclose(f);
+                if (pct >= 0 && pct <= 100) {
+                    rc->gpu_usage = pct;
+                    rc->gpu_mem_used = 0;
+                    rc->gpu_mem_total = 0;
+                    g_dir_close(dir);
+                    return;
+                }
+            } else {
+                fclose(f);
+            }
+        }
+        g_dir_close(dir);
+    }
+
+    // no GPU found: N/A
+    rc->gpu_usage = -1;
+    rc->gpu_mem_used = 0;
+    rc->gpu_mem_total = 0;
 }
 
 static void runcat_update_memory(RunCatPlugin *rc) {
@@ -258,9 +292,13 @@ static void runcat_update_disk(RunCatPlugin *rc) {
 
 static void runcat_update_tooltip(RunCatPlugin *rc) {
     gchar *tip;
-    if (rc->gpu_usage >= 0)
+    if (rc->gpu_usage >= 0 && rc->gpu_mem_total > 0)
         tip = g_strdup_printf("CPU Usage: %d%%\nGPU Usage: %d%% (%" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " MB)\nMemory: %.1f/%.1f GB\nDisk: %d%%",
                               rc->cpu_usage, rc->gpu_usage, rc->gpu_mem_used, rc->gpu_mem_total,
+                              (rc->mem_total_mb - rc->mem_avail_mb) / 1024.0, rc->mem_total_mb / 1024.0, rc->disk_pct);
+    else if (rc->gpu_usage >= 0)
+        tip = g_strdup_printf("CPU Usage: %d%%\nGPU Usage: %d%%\nMemory: %.1f/%.1f GB\nDisk: %d%%",
+                              rc->cpu_usage, rc->gpu_usage,
                               (rc->mem_total_mb - rc->mem_avail_mb) / 1024.0, rc->mem_total_mb / 1024.0, rc->disk_pct);
     else
         tip = g_strdup_printf("CPU Usage: %d%%\nGPU Usage: N/A\nMemory: %.1f/%.1f GB\nDisk: %d%%",

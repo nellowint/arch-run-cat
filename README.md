@@ -71,7 +71,7 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (32×32 PN
   Memory: 11.5/15.5 GB
   Disk: 67%
   ```
-  Label ` XX%` (CPU) beside the cat. GPU via `nvidia-smi` (N/A if absent), memory via `/proc/meminfo`, disk via `statvfs("/")` — polled every 2s.
+  Label ` XX%` (CPU) beside the cat. GPU auto-detects vendor: NVIDIA via `nvidia-smi` (usage + VRAM), AMD via `/sys/class/drm/card*/device/gpu_busy_percent` (usage only, no VRAM), Intel → `N/A`. Memory via `/proc/meminfo`, disk via `statvfs("/")` — polled every 2s.
 
 ## Troubleshooting
 
