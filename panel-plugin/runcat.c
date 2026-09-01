@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 #include <xfconf/xfconf.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
+#include <sys/statvfs.h>
 
 #define TOTAL_FRAMES 5
 
@@ -21,8 +22,15 @@ typedef struct {
     gboolean is_dark;
     gint current_frame;
     gint cpu_usage;
+    gint gpu_usage;
+    guint64 gpu_mem_used;
+    guint64 gpu_mem_total;
+    gdouble mem_total_mb;
+    gdouble mem_avail_mb;
+    gint disk_pct;
     guint anim_timeout_id;
     guint cpu_timeout_id;
+    guint stats_timeout_id;
     guint64 prev_idle;
     guint64 prev_total;
     gchar *resource_path;
@@ -31,6 +39,8 @@ typedef struct {
 static void runcat_free(XfcePanelPlugin *plugin, gpointer data);
 static gboolean runcat_update_animation(gpointer data);
 static gboolean runcat_update_cpu(gpointer data);
+static gboolean runcat_update_stats(gpointer data);
+static void runcat_update_tooltip(RunCatPlugin *rc);
 static void runcat_load_frames(RunCatPlugin *rc);
 static void runcat_update_theme(RunCatPlugin *rc);
 static gint runcat_get_cpu_delay(RunCatPlugin *rc);
@@ -165,9 +175,7 @@ static gboolean runcat_update_cpu(gpointer data) {
             if (cpu < 0) cpu = 0;
             if (cpu > 100) cpu = 100;
             rc->cpu_usage = cpu;
-            gchar *tip = g_strdup_printf("CPU Usage: %d%%", cpu);
-            gtk_widget_set_tooltip_text(rc->ebox, tip);
-            g_free(tip);
+            runcat_update_tooltip(rc);
             if (rc->label) {
                 gchar *txt = g_strdup_printf(" %d%%", cpu);
                 gtk_label_set_text(GTK_LABEL(rc->label), txt);
@@ -184,6 +192,90 @@ static gboolean runcat_update_cpu(gpointer data) {
     }
     rc->prev_idle = Idle;
     rc->prev_total = Total;
+    runcat_update_tooltip(rc);
+    return G_SOURCE_CONTINUE;
+}
+
+static void runcat_update_gpu(RunCatPlugin *rc) {
+    gchar *out = NULL;
+    gchar *err = NULL;
+    gint status = 0;
+    GError *gerr = NULL;
+    if (!g_spawn_command_line_sync("nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+                                   &out, &err, &status, &gerr)) {
+        g_clear_error(&gerr);
+        g_free(err);
+        g_free(out);
+        rc->gpu_usage = -1;
+        return;
+    }
+    g_free(err);
+    if (status != 0 || !out || !*out) {
+        g_free(out);
+        rc->gpu_usage = -1;
+        return;
+    }
+    int usage = 0;
+    guint64 used = 0;
+    guint64 total = 0;
+    if (sscanf(out, "%d, %lu, %lu", &usage, &used, &total) == 3) {
+        rc->gpu_usage = usage;
+        rc->gpu_mem_used = used;
+        rc->gpu_mem_total = total;
+    } else {
+        rc->gpu_usage = -1;
+    }
+    g_free(out);
+}
+
+static void runcat_update_memory(RunCatPlugin *rc) {
+    FILE *f = fopen("/proc/meminfo", "r");
+    if (!f) { rc->mem_total_mb = 0; rc->mem_avail_mb = 0; return; }
+    char line[256];
+    gdouble total_kb = 0, avail_kb = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (g_str_has_prefix(line, "MemTotal:"))
+            sscanf(line, "MemTotal: %lf", &total_kb);
+        else if (g_str_has_prefix(line, "MemAvailable:"))
+            sscanf(line, "MemAvailable: %lf", &avail_kb);
+    }
+    fclose(f);
+    rc->mem_total_mb = total_kb / 1024.0;
+    rc->mem_avail_mb = avail_kb / 1024.0;
+}
+
+static void runcat_update_disk(RunCatPlugin *rc) {
+    struct statvfs buf;
+    if (statvfs("/", &buf) != 0) { rc->disk_pct = 0; return; }
+    if (buf.f_blocks == 0) { rc->disk_pct = 0; return; }
+    guint64 total = buf.f_blocks;
+    guint64 free = buf.f_bavail;
+    gint pct = (gint)((total - free) * 100.0 / total);
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    rc->disk_pct = pct;
+}
+
+static void runcat_update_tooltip(RunCatPlugin *rc) {
+    gchar *tip;
+    if (rc->gpu_usage >= 0)
+        tip = g_strdup_printf("CPU Usage: %d%%\nGPU Usage: %d%% (%" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " MB)\nMemory: %.1f/%.1f GB\nDisk: %d%%",
+                              rc->cpu_usage, rc->gpu_usage, rc->gpu_mem_used, rc->gpu_mem_total,
+                              (rc->mem_total_mb - rc->mem_avail_mb) / 1024.0, rc->mem_total_mb / 1024.0, rc->disk_pct);
+    else
+        tip = g_strdup_printf("CPU Usage: %d%%\nGPU Usage: N/A\nMemory: %.1f/%.1f GB\nDisk: %d%%",
+                              rc->cpu_usage, (rc->mem_total_mb - rc->mem_avail_mb) / 1024.0,
+                              rc->mem_total_mb / 1024.0, rc->disk_pct);
+    gtk_widget_set_tooltip_text(rc->ebox, tip);
+    g_free(tip);
+}
+
+static gboolean runcat_update_stats(gpointer data) {
+    RunCatPlugin *rc = data;
+    runcat_update_gpu(rc);
+    runcat_update_memory(rc);
+    runcat_update_disk(rc);
+    runcat_update_tooltip(rc);
     return G_SOURCE_CONTINUE;
 }
 
@@ -226,6 +318,7 @@ static void runcat_free(XfcePanelPlugin *plugin, gpointer data) {
     RunCatPlugin *rc = data;
     if (rc->anim_timeout_id) g_source_remove(rc->anim_timeout_id);
     if (rc->cpu_timeout_id) g_source_remove(rc->cpu_timeout_id);
+    if (rc->stats_timeout_id) g_source_remove(rc->stats_timeout_id);
     for (int i = 0; i < TOTAL_FRAMES; i++) {
         if (rc->frames_dark[i]) g_object_unref(rc->frames_dark[i]);
         if (rc->frames_light[i]) g_object_unref(rc->frames_light[i]);
@@ -241,6 +334,12 @@ static void runcat_construct(XfcePanelPlugin *plugin) {
     rc->plugin = plugin;
     rc->current_frame = TOTAL_FRAMES - 1;
     rc->cpu_usage = 0;
+    rc->gpu_usage = -1;
+    rc->gpu_mem_used = 0;
+    rc->gpu_mem_total = 0;
+    rc->mem_total_mb = 0;
+    rc->mem_avail_mb = 0;
+    rc->disk_pct = 0;
     rc->is_dark = FALSE;
     rc->cached_size = -1;
     rc->last_delay = -1;
@@ -265,7 +364,7 @@ static void runcat_construct(XfcePanelPlugin *plugin) {
     gtk_widget_show(rc->label);
     gtk_box_pack_start(GTK_BOX(rc->box), rc->label, FALSE, FALSE, 0);
 
-    gtk_widget_set_tooltip_text(rc->ebox, "CPU Usage: 0%");
+    gtk_widget_set_tooltip_text(rc->ebox, "Loading...");
 
     // initial frame: show 0 without extra increment
     rc->current_frame = 0;
@@ -280,13 +379,15 @@ static void runcat_construct(XfcePanelPlugin *plugin) {
         if (pix) gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), pix);
     }
 
-    // timers: animation 50-100ms, cpu poll 1s
+    // timers: animation 50-100ms, cpu poll 1s, stats poll 2s
     gint delay = runcat_get_cpu_delay(rc);
     rc->last_delay = delay;
     rc->anim_timeout_id = g_timeout_add(delay, runcat_update_animation, rc);
     rc->cpu_timeout_id = g_timeout_add(1000, runcat_update_cpu, rc);
-    // poll immediately for initial cpu
+    rc->stats_timeout_id = g_timeout_add(2000, runcat_update_stats, rc);
+    // poll immediately for initial cpu and stats
     runcat_update_cpu(rc);
+    runcat_update_stats(rc);
 
     g_signal_connect(plugin, "size-changed", G_CALLBACK(runcat_size_changed), rc);
     g_signal_connect(plugin, "orientation-changed", G_CALLBACK(runcat_orientation_changed), rc);
