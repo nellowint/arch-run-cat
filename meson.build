@@ -1,5 +1,5 @@
 project('arch-run-cat', 'c',
-  version: '0.3.0',
+  version: '0.4.0',
   license: 'MIT',
   meson_version: '>=0.54.0',
   default_options: ['c_std=gnu11', 'warning_level=1']
