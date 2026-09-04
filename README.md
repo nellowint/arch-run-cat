@@ -8,7 +8,7 @@ A cute animated cat running on your Arch Linux XFCE taskbar via native panel plu
 
 ![demo](resources/demo.gif)
 
-Native XFCE panel plugin animates an adorable cat (5 frames × 2 themes) directly in `xfce4-panel`. Animation speed follows CPU usage (10-20 FPS). The tooltip shows CPU, GPU, memory and disk usage.
+Native XFCE panel plugin animates an adorable cat (5 frames × 2 themes) directly in `xfce4-panel`. Animation speed follows CPU usage (10-100 FPS). The tooltip shows CPU, GPU, memory and disk usage.
 
 ## Requirements
 
@@ -62,7 +62,7 @@ Frames are `resources/cat/dark_cat_0..4.png` and `light_cat_0..4.png` (32×32 PN
 ## How it works
 
 - **CPU**: reads `/proc/stat` delta (`Idle = idle+iowait`, `NonIdle = user+nice+system+irq+softirq+steal`) every 1s, `CPU% = (totald-idled)*100/totald` clamped 0–100.
-- **Animation**: `g_timeout_add(50-100ms)` drives `GtkImage` with scaled `GdkPixbuf` (16-48px bilinear). Delay is CPU-proportional: `CPU<10→100ms` (10 FPS), `10-20→90ms`, `20-40→80ms`, `40-50→70ms`, `50-70→60ms`, `>=70→50ms` (20 FPS).
+- **Animation**: `g_timeout_add(10-100ms)` drives `GtkImage` with scaled `GdkPixbuf` (16-48px bilinear). Delay is CPU-proportional: `CPU<10→100ms` (10 FPS), `10-20→90ms`, `20-30→80ms`, `30-40→70ms`, `40-50→60ms`, `50-60→50ms`, `60-70→40ms`, `70-80→30ms`, `80-90→20ms`, `>=90→10ms` (100 FPS).
 - **Resources**: `DATADIR=/usr/share/arch-run-cat/cat` (meson `prefix/datadir`), fallback `XDG_DATA_HOME` and `GtkSettings` for theme. No `frame.state` needed.
 - **Tooltip**: multi-line on hover:
   ```
