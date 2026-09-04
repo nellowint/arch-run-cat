@@ -48,10 +48,14 @@ static gint runcat_get_cpu_delay(RunCatPlugin *rc);
 static gint runcat_get_cpu_delay(RunCatPlugin *rc) {
     if (rc->cpu_usage < 10) return 100;   // 10 FPS
     if (rc->cpu_usage < 20) return 90;
-    if (rc->cpu_usage < 40) return 80;
-    if (rc->cpu_usage < 50) return 70;
-    if (rc->cpu_usage < 70) return 60;
-    return 50; // 20 FPS
+    if (rc->cpu_usage < 30) return 80;
+    if (rc->cpu_usage < 40) return 70;
+    if (rc->cpu_usage < 50) return 60;
+    if (rc->cpu_usage < 60) return 50;
+    if (rc->cpu_usage < 70) return 40;
+    if (rc->cpu_usage < 80) return 30;
+    if (rc->cpu_usage < 90) return 20;
+    return 10;                             // 100 FPS
 }
 
 static void runcat_ensure_cache(RunCatPlugin *rc, gint target) {
@@ -417,7 +421,7 @@ static void runcat_construct(XfcePanelPlugin *plugin) {
         if (pix) gtk_image_set_from_pixbuf(GTK_IMAGE(rc->image), pix);
     }
 
-    // timers: animation 50-100ms, cpu poll 1s, stats poll 2s
+    // timers: animation 10-100ms, cpu poll 1s, stats poll 2s
     gint delay = runcat_get_cpu_delay(rc);
     rc->last_delay = delay;
     rc->anim_timeout_id = g_timeout_add(delay, runcat_update_animation, rc);
