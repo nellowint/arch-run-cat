@@ -9,7 +9,7 @@ license=('MIT')
 depends=('xfce4-panel>=4.18' 'gtk3' 'xfconf' 'libxfce4util' 'gdk-pixbuf2')
 makedepends=('meson' 'pkgconf')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/nellowint/arch-run-cat/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('50d3470f984d3189dcc77cd9fc28eb3f5f48a86b67f86712ef45f21e2254165e')
 
 build() {
   arch-meson "$pkgname-$pkgver" build
