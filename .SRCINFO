@@ -13,6 +13,6 @@ pkgbase = arch-run-cat
 	depends = libxfce4util
 	depends = gdk-pixbuf2
 	source = arch-run-cat-0.4.2.tar.gz::https://github.com/nellowint/arch-run-cat/archive/refs/tags/v0.4.2.tar.gz
-	sha256sums = SKIP
+	sha256sums = 8eca9cf5d51c30157319cfb2be41af375f4b7f80f28d2c7f800b64d3379da79a
 
 pkgname = arch-run-cat
